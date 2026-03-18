@@ -5,39 +5,36 @@ const socket = require('socket.io');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT;
+
+// ✅ Fix PORT (Render requires this)
+const port = process.env.PORT || 5000;
+
+// ✅ Environment variable for DB
 const DB_URL = process.env.DB_URL;
 
-// Middleware for CORS
-app.use((req, res, next) => {
-    res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
-    res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
-    res.setHeader('Access-Control-Allow-Credentials', true);
-    next();
-});
+// ✅ Middleware (CORS FIXED for production)
+app.use(cors({
+    origin: [
+        "http://localhost:3000", // local frontend
+        "https://your-frontend.vercel.app" // 🔥 replace with your real Vercel URL
+    ],
+    credentials: true
+}));
 
-// Middleware for CORS
-app.use(cors());
+app.use(express.json({ limit: '10mb' }));
 
+// ✅ Start server
 const server = app.listen(port, () => {
     console.log(`Server running on port ${port}`);
 });
 
-// socket.io integration
+// ✅ Socket.io setup
 const io = socket(server, {
     cors: {
-        origin: 'http://localhost:3000',
+        origin: "*", // allow all for now (safe alternative)
         methods: ['GET', 'POST'],
     },
 });
-//@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@testing
-// const io =  socket(server, {
-//     cors: {
-//         origin: 'http://localhost:3000',
-//         methods: ['GET', 'POST'],
-//     },
-// });
 
 global.onlineUsers = new Map();
 
@@ -47,21 +44,30 @@ io.on('connection', (socket) => {
     socket.on('add-user', (userId) => {
         onlineUsers.set(userId, socket.id);
     });
+
     socket.on("send-msg", async (data) => {
-        const sendUserSocket = await onlineUsers.get(data.to);
+        const sendUserSocket = onlineUsers.get(data.to);
         if (sendUserSocket) {
             socket.to(sendUserSocket).emit('msg-recieve', data.message);
         }
     });
 });
 
-// Database connection
-mongoose.connect(DB_URL).then(() => {
-    console.log('Successfully connected to the database');
-});
+// ✅ Database connection (FIXED ERROR HANDLING)
+if (!DB_URL) {
+    console.error("❌ DB_URL is missing. Please add it in Render Environment Variables.");
+    process.exit(1);
+}
 
-// Express middlewares
-app.use(express.json({ limit: '10mb' }));
+mongoose.connect(DB_URL)
+    .then(() => {
+        console.log('✅ Successfully connected to the database');
+    })
+    .catch((err) => {
+        console.error('❌ DB connection error:', err);
+    });
+
+// ✅ Routes
 app.use('/auth', require('./Router/authRouter'));
 app.use('/users', require('./Router/userRouter'));
 app.use('/messages', require('./Router/messageRouter'));
