@@ -15,9 +15,9 @@ const DB_URL = process.env.DB_URL;
 // ✅ Middleware (CORS FIXED for production)
 app.use(cors({
     origin: [
-        "http://localhost:3000", // local frontend
-        "https://your-frontend.vercel.app" // 🔥 replace with your real Vercel URL
-    ],
+        "http://localhost:3000",
+        "https://zenchat-frontend.vercel.app"
+],
     credentials: true
 }));
 
